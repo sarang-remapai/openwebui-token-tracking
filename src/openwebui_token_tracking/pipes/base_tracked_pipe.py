@@ -139,18 +139,12 @@ class BaseTrackedPipe(ABC):
             )
 
         elif monthly_credits_remaining <= 0:
-            free_models = [
-                m
-                for m in self.token_tracker.get_models()
-                if not self.token_tracker.is_paid(m.id)
-            ]
             max_credits = self.token_tracker.max_credits(user)
 
             raise MonthlyTokenLimitExceededError(
                 f"You've exceeded the monthly usage limit ({max_credits} credits) for the paid AI models. "
 f"\nYour usage will reset in {_time_to_month_end()}.\n"
-                f"If you would like to obtain more credits, please reach out to {os.environ.get('TOKEN_CREDIT_CONTACT_EMAIL', 'rc@dartmouth.edu')}.\n"
-                f"**IMPORTANT:** You can still use one of the free models (e.g., {free_models[0].name})."
+                f"If you would like to obtain more credits, please reach out to service provider."
             )
 
         return True
