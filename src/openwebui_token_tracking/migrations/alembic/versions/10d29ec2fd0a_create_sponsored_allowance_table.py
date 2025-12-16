@@ -32,7 +32,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=255)),
         sa.Column("sponsor_id", sa.String(length=255)),
         sa.Column("total_credit_limit", sa.Integer(), nullable=False),
-        sa.Column("daily_credit_limit", sa.Integer(), nullable=True),
+        sa.Column("monthly_credit_limit", sa.Integer(), nullable=True),
         if_not_exists=True,
     )
     op.create_table(
