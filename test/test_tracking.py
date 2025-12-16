@@ -6,7 +6,7 @@ from fixtures import (
     with_sponsored_allowance,
     TEST_CREDIT_GROUP_LIMIT,
     TEST_SPONSORED_ALLOWANCE_NAME,
-    TEST_SPONSORED_ALLOWANCE_DAILY_LIMIT,
+    TEST_SPONSORED_ALLOWANCE_MONTHLY_LIMIT,
     TEST_SPONSORED_ALLOWANCE_TOTAL_LIMIT,
     BASE_ALLOWANCE,
     model,
@@ -17,28 +17,28 @@ load_dotenv(find_dotenv())
 
 
 def test_max_credits(tracker, user, with_credit_group, with_sponsored_allowance):
-    # Simple daily allowance for user (based on credit groups)
+    # Simple monthly allowance for user (based on credit groups)
     assert tracker.max_credits(user) == TEST_CREDIT_GROUP_LIMIT + BASE_ALLOWANCE
-    # Daily credits through sponsored allowance
+    # Monthly credits through sponsored allowance
     assert (
         tracker.max_credits(
             user, sponsored_allowance_name=TEST_SPONSORED_ALLOWANCE_NAME
         )
-        == TEST_SPONSORED_ALLOWANCE_DAILY_LIMIT
+        == TEST_SPONSORED_ALLOWANCE_MONTHLY_LIMIT
     )
 
 
 def test_remaining_credits(tracker, user, with_sponsored_allowance):
     # Remaining credits without a sponsored allowance
-    daily_credits, total_sponsored_credits = tracker.remaining_credits(user)
-    assert daily_credits > 0
+    monthly_credits, total_sponsored_credits = tracker.remaining_credits(user)
+    assert monthly_credits > 0
     assert total_sponsored_credits is None
 
     # Remaining credits with a sponsored allowance
-    daily_credits, total_sponsored_credits = tracker.remaining_credits(
+    monthly_credits, total_sponsored_credits = tracker.remaining_credits(
         user, TEST_SPONSORED_ALLOWANCE_NAME
     )
-    assert daily_credits == TEST_SPONSORED_ALLOWANCE_DAILY_LIMIT
+    assert monthly_credits == TEST_SPONSORED_ALLOWANCE_MONTHLY_LIMIT
     assert total_sponsored_credits == TEST_SPONSORED_ALLOWANCE_TOTAL_LIMIT
 
 

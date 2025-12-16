@@ -11,7 +11,7 @@ import os
 import logging
 
 from openwebui_token_tracking.tracking import TokenTracker
-from openwebui_token_tracking.pipes.base_tracked_pipe import _time_to_midnight
+from openwebui_token_tracking.pipes.base_tracked_pipe import _time_to_month_end
 import time
 
 
@@ -19,7 +19,7 @@ class CreditBalance:
     """
     Show credit balance for the current user.
 
-    This class provides functionality to display the remaining daily credits for a user.
+    This class provides functionality to display the remaining monthly credits for a user.
     It queries the token tracking database to retrieve credit information and emits an event
     with the credit balance details.
 
@@ -72,8 +72,8 @@ class CreditBalance:
 
         stats = " | ".join(
             [
-                f"Remaining daily credits: {credits_left} / {max_credits}"
-                f" (resets in {_time_to_midnight()}).",
+                f"Remaining monthly credits: {credits_left} / {max_credits}"
+                f" (resets in {_time_to_month_end()}).",
             ]
         )
 

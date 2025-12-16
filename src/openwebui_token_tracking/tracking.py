@@ -12,6 +12,7 @@ import sqlalchemy as db
 from sqlalchemy.orm import Session
 
 from datetime import datetime, date, UTC
+from calendar import monthrange
 import logging
 from typing import Iterable
 from uuid import UUID
@@ -25,8 +26,8 @@ class TokenLimitExceededError(Exception):
     pass
 
 
-class DailyTokenLimitExceededError(TokenLimitExceededError):
-    """Raised when a daily token limit was exceeded"""
+class MonthlyTokenLimitExceededError(TokenLimitExceededError):
+    """Raised when a monthly token limit was exceeded"""
 
     pass
 
@@ -51,7 +52,7 @@ class TokenTracker:
     :ivar db_url: Database connection URL
 
     :raises TokenLimitExceededError: When a token limit is exceeded
-    :raises DailyTokenLimitExceededError: When a daily token limit is exceeded
+    :raises MonthlyTokenLimitExceededError: When a monthly token limit is exceeded
     :raises TotalTokenLimitExceededError: When a total token limit is exceeded
     """
     def __init__(self, db_url: str):
@@ -88,10 +89,10 @@ class TokenTracker:
     def _remaining_user_credits(
         self, user: dict, sponsored_allowance_id: UUID | None
     ) -> int:
-        """Return user's remaining daily credits.
+        """Return user's remaining monthly credits.
 
-        If the name of a sponsored allowance is provided, the daily credit limit is
-        calculated considering only the daily limit from that allowance.
+        If the name of a sponsored allowance is provided, the monthly credit limit is
+        calculated considering only the monthly limit from that allowance.
         Otherwise, the remaining credits are calculated using the user's group allowances.
 
         :param user_id: User
@@ -104,7 +105,13 @@ class TokenTracker:
 
         with Session(self.db_engine) as session:
             current_date = date.today()
-            logger.debug(current_date)
+            current_year = current_date.year
+            current_month = current_date.month
+            # Get first and last day of current month
+            first_day = date(current_year, current_month, 1)
+            last_day = date(current_year, current_month, monthrange(current_year, current_month)[1])
+            
+            logger.debug(f"Current month range: {first_day} to {last_day}")
             models = self.get_models()
             model_list = [m.id for m in models]
 
@@ -118,7 +125,8 @@ class TokenTracker:
                 )
                 .where(
                     TokenUsageLog.user_id == user["id"],
-                    db.func.date(TokenUsageLog.log_date) == current_date,
+                    db.func.date(TokenUsageLog.log_date) >= first_day,
+                    db.func.date(TokenUsageLog.log_date) <= last_day,
                     TokenUsageLog.model_id.in_(model_list),
                     TokenUsageLog.sponsored_allowance_id == sponsored_allowance_id,
                 )
@@ -126,13 +134,13 @@ class TokenTracker:
             )
             results = session.execute(query).fetchall()
 
-            used_daily_credits = self._calc_credits_from_tokens(
+            used_monthly_credits = self._calc_credits_from_tokens(
                 records=results, models=models
             )
 
         return self.max_credits(
             user, sponsored_allowance_id=sponsored_allowance_id
-        ) - int(used_daily_credits)
+        ) - int(used_monthly_credits)
 
     def _remaining_sponsored_credits(self, sponsored_allowance_id: str):
         """Get remaining credits in a sponsored allowance
@@ -221,7 +229,7 @@ class TokenTracker:
         sponsored_allowance_name: str = None,
         sponsored_allowance_id: UUID = None,
     ) -> int:
-        """Get a user's maximum daily credits.
+        """Get a user's maximum monthly credits.
 
         :param user: User
         :type user: dict
@@ -229,7 +237,7 @@ class TokenTracker:
         :type sponsored_allowance_name: str, optional
         :param sponsored_allowance_id: ID of the sponsored allowance to consider
         :type sponsored_allowance_id: str, optional
-        :return: Maximum daily credit allowance
+        :return: Maximum monthly credit allowance
         :rtype: int
         """
         if sponsored_allowance_name is not None and sponsored_allowance_id is not None:
@@ -259,13 +267,13 @@ class TokenTracker:
                 max_credits = base_allowance + group_allowances
             elif sponsored_allowance_name is not None:
                 max_credits = (
-                    session.query(SponsoredAllowance.daily_credit_limit)
+                    session.query(SponsoredAllowance.monthly_credit_limit)
                     .filter(SponsoredAllowance.name == sponsored_allowance_name)
                     .scalar()
                 )
             elif sponsored_allowance_id is not None:
                 max_credits = (
-                    session.query(SponsoredAllowance.daily_credit_limit)
+                    session.query(SponsoredAllowance.monthly_credit_limit)
                     .filter(SponsoredAllowance.id == sponsored_allowance_id)
                     .scalar()
                 )
@@ -282,7 +290,7 @@ class TokenTracker:
         :type user_id: dict
         :param sponsored_allowance_name: Name of the sponsored allowance
         :type sponsored_allowance_name: str, optional
-        :return: Remaining daily credits available to the user, and in the sponsored allowance (if specified)
+        :return: Remaining monthly credits available to the user, and in the sponsored allowance (if specified)
         :rtype: tuple[int, int]
         """
         logger.debug("Checking remaining credits...")

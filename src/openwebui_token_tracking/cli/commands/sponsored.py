@@ -36,10 +36,10 @@ def sponsored():
     required=True,
 )
 @click.option(
-    "--daily-limit",
-    "-d",
+    "--monthly-limit",
+    "-M",
     type=int,
-    help="Daily credit limit for each user",
+    help="Monthly credit limit for each user",
 )
 def create_sponsored_allowance(
     database_url: str,
@@ -47,7 +47,7 @@ def create_sponsored_allowance(
     name: str,
     model: list[str],
     total_limit: int,
-    daily_limit: int | None,
+    monthly_limit: int | None,
 ):
 
     return sp.create_sponsored_allowance(
@@ -56,7 +56,7 @@ def create_sponsored_allowance(
         name=name,
         models=model,
         total_credit_limit=total_limit,
-        daily_credit_limit=daily_limit,
+        monthly_credit_limit=monthly_limit,
     )
 
 
@@ -115,10 +115,10 @@ def list_sponsored(database_url: str):
     help="New total credit limit across all users and models",
 )
 @click.option(
-    "--daily-limit",
-    "-d",
+    "--monthly-limit",
+    "-M",
     type=int,
-    help="New daily credit limit for each user",
+    help="New monthly credit limit for each user",
 )
 def update_sponsored(
     database_url: str,
@@ -128,7 +128,7 @@ def update_sponsored(
     sponsor_id: str = None,
     model: list[str] = None,
     total_limit: int = None,
-    daily_limit: int = None,
+    monthly_limit: int = None,
 ):
     """Update a sponsored allowance in the database.
 
@@ -153,7 +153,7 @@ def update_sponsored(
             sponsor_id=sponsor_id,
             models=models_param,
             total_credit_limit=total_limit,
-            daily_credit_limit=daily_limit,
+            monthly_credit_limit=monthly_limit,
         )
         click.echo(f"Successfully updated sponsored allowance: {id or name}")
     except ValueError as e:

@@ -64,5 +64,5 @@ class SponsoredAllowance(Base):
     """Relationship with the :class:`SponsoredAllowanceBaseModels` model, linked via :attr:`SponsoredAllowanceBaseModels.sponsored_allowance`"""
     total_credit_limit = sa.Column(sa.Integer, nullable=False)
     """Total credit limit across all users and base models, i.e., maximum sponsored amount"""
-    daily_credit_limit = sa.Column(sa.Integer, nullable=True)
-    """Daily credit limit per user"""
+    monthly_credit_limit = sa.Column(sa.Integer, nullable=True)
+    """Monthly credit limit per user"""

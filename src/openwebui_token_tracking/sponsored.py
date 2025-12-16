@@ -16,7 +16,7 @@ def create_sponsored_allowance(
     name: str,
     models: Iterable[str],
     total_credit_limit: int,
-    daily_credit_limit: int,
+    monthly_credit_limit: int,
 ):
     if database_url is None:
         database_url = os.environ["DATABASE_URL"]
@@ -27,7 +27,7 @@ def create_sponsored_allowance(
             sponsor_id=sponsor_id,
             name=name,
             total_credit_limit=total_credit_limit,
-            daily_credit_limit=daily_credit_limit,
+            monthly_credit_limit=monthly_credit_limit,
         )
 
         # Create the base model associations
@@ -130,7 +130,7 @@ def get_sponsored_allowance(
             "name": sponsored_allowance.name,
             "sponsor_id": sponsored_allowance.sponsor_id,
             "total_credit_limit": sponsored_allowance.total_credit_limit,
-            "daily_credit_limit": sponsored_allowance.daily_credit_limit,
+            "monthly_credit_limit": sponsored_allowance.monthly_credit_limit,
             "base_models": sponsored_allowance.base_models,
         }
 
@@ -171,7 +171,7 @@ def get_sponsored_allowances(
                     "name": allowance.name,
                     "sponsor_id": allowance.sponsor_id,
                     "total_credit_limit": allowance.total_credit_limit,
-                    "daily_credit_limit": allowance.daily_credit_limit,
+                    "monthly_credit_limit": allowance.monthly_credit_limit,
                     "base_models": allowance.base_models,
                 }
             )
@@ -187,7 +187,7 @@ def update_sponsored_allowance(
     sponsor_id: str = None,
     models: Iterable[str] = None,
     total_credit_limit: int = None,
-    daily_credit_limit: int = None,
+    monthly_credit_limit: int = None,
 ):
     """Update a sponsored allowance by ID or name.
 
@@ -205,8 +205,8 @@ def update_sponsored_allowance(
     :type models: Iterable[str], optional
     :param total_credit_limit: The new total credit limit.
     :type total_credit_limit: int, optional
-    :param daily_credit_limit: The new daily credit limit.
-    :type daily_credit_limit: int, optional
+    :param monthly_credit_limit: The new monthly credit limit.
+    :type monthly_credit_limit: int, optional
     :raises ValueError: If neither allowance_id nor name is provided.
     :raises ValueError: If no sponsored allowance is found with the given ID or name.
     """
@@ -236,8 +236,8 @@ def update_sponsored_allowance(
             sponsored_allowance.sponsor_id = sponsor_id
         if total_credit_limit is not None:
             sponsored_allowance.total_credit_limit = total_credit_limit
-        if daily_credit_limit is not None:
-            sponsored_allowance.daily_credit_limit = daily_credit_limit
+        if monthly_credit_limit is not None:
+            sponsored_allowance.monthly_credit_limit = monthly_credit_limit
 
         if models is not None:
             # Delete existing model associations

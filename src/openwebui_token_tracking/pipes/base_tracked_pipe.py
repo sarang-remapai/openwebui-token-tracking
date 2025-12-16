@@ -23,23 +23,26 @@ import requests
 from openwebui_token_tracking import TokenTracker
 from openwebui_token_tracking.tracking import (
     TokenLimitExceededError,
-    DailyTokenLimitExceededError,
+    MonthlyTokenLimitExceededError,
     TotalTokenLimitExceededError,
 )
 
 logger = logging.getLogger(__name__)
 
 
-def _time_to_midnight():
+def _time_to_month_end():
+    from calendar import monthrange
     now = datetime.datetime.now()
-    remaining_hours = 24 - now.hour - 1
-    remaining_minutes = 60 - now.minute
-    remaining_seconds = 60 - now.second
-
-    time_to_midnight = datetime.timedelta(
-        hours=remaining_hours, minutes=remaining_minutes, seconds=remaining_seconds
-    )
-    return time_to_midnight
+    current_year = now.year
+    current_month = now.month
+    last_day = monthrange(current_year, current_month)[1]
+    
+    # Calculate end of month datetime
+    end_of_month = datetime.datetime(current_year, current_month, last_day, 23, 59, 59)
+    
+    # Calculate time difference
+    time_to_month_end = end_of_month - now
+    return time_to_month_end
 
 
 class RequestError(Exception):
@@ -103,14 +106,14 @@ class BaseTrackedPipe(ABC):
         :type user: dict
         :param sponsored_allowance_name: The name of the sponsored allowance
         :type sponsored_allowance_name: str, optional
-        :raises TokenLimitExceededError: If user has exceeded their daily token limit
+        :raises TokenLimitExceededError: If user has exceeded their monthly token limit
         :return: True if within limits
         :rtype: bool
         """
         if not self.token_tracker.is_paid(model_id):
             return True
 
-        daily_credits_remaining, total_sponsored_credits_remaining = (
+        monthly_credits_remaining, total_sponsored_credits_remaining = (
             self.token_tracker.remaining_credits(
                 user, sponsored_allowance_name=sponsored_allowance_name
             )
@@ -125,17 +128,17 @@ class BaseTrackedPipe(ABC):
                 "has been exceeded. Please contact the sponsor to add more credits, or choose "
                 "a different model."
             )
-        elif sponsored_allowance_name is not None and daily_credits_remaining <= 0:
+        elif sponsored_allowance_name is not None and monthly_credits_remaining <= 0:
             max_credits = self.token_tracker.max_credits(
                 user, sponsored_allowance_name=sponsored_allowance_name
             )
-            raise DailyTokenLimitExceededError(
-                f"You've exceeded the daily usage limit ({max_credits} credits) for "
-                f"the sponsored allowance '{sponsored_allowance_name}'.\nYour usage will reset in {_time_to_midnight()}.\n"
+            raise MonthlyTokenLimitExceededError(
+                f"You've exceeded the monthly usage limit ({max_credits} credits) for "
+                f"the sponsored allowance '{sponsored_allowance_name}'.\nYour usage will reset in {_time_to_month_end()}.\n"
                 "Until then, please use a different model not covered by this sponsored allowance."
             )
 
-        elif daily_credits_remaining <= 0:
+        elif monthly_credits_remaining <= 0:
             free_models = [
                 m
                 for m in self.token_tracker.get_models()
@@ -143,9 +146,9 @@ class BaseTrackedPipe(ABC):
             ]
             max_credits = self.token_tracker.max_credits(user)
 
-            raise DailyTokenLimitExceededError(
-                f"You've exceeded the daily usage limit ({max_credits} credits) for the paid AI models. "
-f"\nYour usage will reset in {_time_to_midnight()}.\n"
+            raise MonthlyTokenLimitExceededError(
+                f"You've exceeded the monthly usage limit ({max_credits} credits) for the paid AI models. "
+f"\nYour usage will reset in {_time_to_month_end()}.\n"
                 f"If you would like to obtain more credits, please reach out to {os.environ.get('TOKEN_CREDIT_CONTACT_EMAIL', 'rc@dartmouth.edu')}.\n"
                 f"**IMPORTANT:** You can still use one of the free models (e.g., {free_models[0].name})."
             )
@@ -434,4 +437,4 @@ f"\nYour usage will reset in {_time_to_midnight()}.\n"
 
 
 if __name__ == "__main__":
-    print(_time_to_midnight())
+    print(_time_to_month_end())
