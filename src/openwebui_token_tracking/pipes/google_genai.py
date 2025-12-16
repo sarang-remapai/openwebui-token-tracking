@@ -7,7 +7,7 @@ handling both streaming and non-streaming responses while tracking token usage.
 import os
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
-from open_webui.utils.misc import pop_system_message
+from openwebui_token_tracking.utils import pop_system_message
 from pydantic import BaseModel, Field
 
 from typing import Any, Generator, Tuple

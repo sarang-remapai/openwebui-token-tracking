@@ -6,12 +6,11 @@ readme = "README.md"
 authors = [
     { name = "Simon Stone", email = "simon.stone@dartmouth.edu" }
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "alembic>=1.14.0",
     "click>=8.1.8",
     "google-generativeai>=0.7.2",
-    "open-webui>=0.6.0",
     "pydantic>=2.9.2",
     "pytest>=8.3.4",
     "python-dotenv>=1.0.1",

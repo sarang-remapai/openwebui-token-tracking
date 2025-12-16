@@ -3,7 +3,7 @@ import requests
 import json
 from pydantic import BaseModel, Field
 from typing import List, Generator, Any, Tuple
-from open_webui.utils.misc import pop_system_message
+from openwebui_token_tracking.utils import pop_system_message
 from .base_tracked_pipe import BaseTrackedPipe, RequestError, TokenCount
 
 
