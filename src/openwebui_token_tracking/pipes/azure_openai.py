@@ -122,40 +122,53 @@ class AzureOpenAITrackedPipe(BaseTrackedPipe):
         deployment_name = payload.pop("deployment_name")
 
         def generate_stream():
-            self.url = self._build_url(deployment_name)
-            stream_payload = {**payload, "stream_options": {"include_usage": True}}
+            try:
+                self.url = self._build_url(deployment_name)
+                stream_payload = {**payload, "stream_options": {"include_usage": True}}
 
-            with requests.post(
-                url=self.url,
-                headers=headers,
-                json=stream_payload,
-                stream=True,
-                timeout=(3.05, 60),
-            ) as response:
-                if response.status_code != 200:
-                    raise RequestError(
-                        f"HTTP Error {response.status_code}: {response.text}"
-                    )
+                if self.valves.DEBUG:
+                    print(f"Azure OpenAI Request URL: {self.url}")
+                    print(f"Azure OpenAI Headers: {headers}")
+                    print(f"Azure OpenAI Payload: {stream_payload}")
 
-                for line in response.iter_lines():
-                    if line:
-                        line = line.decode("utf-8")
-                        if line.startswith("data: "):
-                            try:
-                                data = json.loads(line[6:])
-                                if data.get("usage", None):
-                                    tokens.prompt_tokens = data["usage"].get(
-                                        "prompt_tokens"
-                                    )
-                                    tokens.response_tokens = data["usage"].get(
-                                        "completion_tokens"
-                                    )
-                            except json.JSONDecodeError:
-                                print(f"Failed to parse JSON: {line}")
-                            except KeyError as e:
-                                print(f"Unexpected data structure: {e}")
-                                print(f"Full data: {data}")
-                    yield line
+                with requests.post(
+                    url=self.url,
+                    headers=headers,
+                    json=stream_payload,
+                    stream=True,
+                    timeout=(3.05, 60),
+                ) as response:
+                    if response.status_code != 200:
+                        error_text = response.text
+                        raise RequestError(
+                            f"HTTP Error {response.status_code}: {error_text}"
+                        )
+
+                    for line in response.iter_lines():
+                        if line:
+                            line = line.decode("utf-8")
+                            if line.startswith("data: "):
+                                try:
+                                    data = json.loads(line[6:])
+                                    if data.get("usage", None):
+                                        tokens.prompt_tokens = data["usage"].get(
+                                            "prompt_tokens"
+                                        )
+                                        tokens.response_tokens = data["usage"].get(
+                                            "completion_tokens"
+                                        )
+                                except json.JSONDecodeError:
+                                    print(f"Failed to parse JSON: {line}")
+                                except KeyError as e:
+                                    print(f"Unexpected data structure: {e}")
+                                    print(f"Full data: {data}")
+                        yield line
+            except requests.exceptions.RequestException as e:
+                error_msg = str(e).encode('ascii', 'ignore').decode('ascii')
+                raise RequestError(f"Request failed: {error_msg}")
+            except Exception as e:
+                error_msg = str(e).encode('ascii', 'ignore').decode('ascii')
+                raise RequestError(f"Unexpected error: {error_msg}")
 
         return tokens, generate_stream()
 
@@ -173,22 +186,35 @@ class AzureOpenAITrackedPipe(BaseTrackedPipe):
         :rtype: Tuple[int, int, Any]
         :raises RequestError: If the API request fails
         """
-        deployment_name = payload.pop("deployment_name")
-        self.url = self._build_url(deployment_name)
+        try:
+            deployment_name = payload.pop("deployment_name")
+            self.url = self._build_url(deployment_name)
 
-        response = requests.post(
-            self.url, headers=headers, json=payload, timeout=(3.05, 60)
-        )
+            if self.valves.DEBUG:
+                print(f"Azure OpenAI Request URL: {self.url}")
+                print(f"Azure OpenAI Headers: {headers}")
+                print(f"Azure OpenAI Payload: {payload}")
 
-        if response.status_code != 200:
-            raise RequestError(f"HTTP Error {response.status_code}: {response.text}")
+            response = requests.post(
+                self.url, headers=headers, json=payload, timeout=(3.05, 60)
+            )
 
-        res = response.json()
-        tokens = TokenCount()
-        tokens.prompt_tokens = res["usage"]["prompt_tokens"]
-        tokens.response_tokens = res["usage"]["completion_tokens"]
+            if response.status_code != 200:
+                error_text = response.text
+                raise RequestError(f"HTTP Error {response.status_code}: {error_text}")
 
-        return tokens, res
+            res = response.json()
+            tokens = TokenCount()
+            tokens.prompt_tokens = res["usage"]["prompt_tokens"]
+            tokens.response_tokens = res["usage"]["completion_tokens"]
+
+            return tokens, res
+        except requests.exceptions.RequestException as e:
+            error_msg = str(e).encode('ascii', 'ignore').decode('ascii')
+            raise RequestError(f"Request failed: {error_msg}")
+        except Exception as e:
+            error_msg = str(e).encode('ascii', 'ignore').decode('ascii')
+            raise RequestError(f"Unexpected error: {error_msg}")
 
     def pipes(self):
         self.provider = self.valves.PROVIDER
