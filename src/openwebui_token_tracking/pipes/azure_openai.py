@@ -27,9 +27,9 @@ class AzureOpenAITrackedPipe(BaseTrackedPipe):
             default="",
             description="API key for authenticating requests to Azure OpenAI.",
         )
-        AZURE_RESOURCE_NAME: str = Field(
+        AZURE_ENDPOINT: str = Field(
             default="",
-            description="Azure resource name (e.g., 'privateai-apse1-resource' from your endpoint URL)",
+            description="Full Azure OpenAI endpoint URL (e.g., 'https://privateai-apse1-resource.cognitiveservices.azure.com' or 'https://your-resource.openai.azure.com')",
         )
         API_VERSION: str = Field(
             default="2024-08-01-preview",
@@ -45,7 +45,7 @@ class AzureOpenAITrackedPipe(BaseTrackedPipe):
         self.valves = self.Valves(
             **{
                 "API_KEY": os.getenv("AZURE_OPENAI_API_KEY", ""),
-                "AZURE_RESOURCE_NAME": os.getenv("AZURE_RESOURCE_NAME", ""),
+                "AZURE_ENDPOINT": os.getenv("AZURE_ENDPOINT", ""),
             }
         )
         super().__init__(
@@ -97,7 +97,8 @@ class AzureOpenAITrackedPipe(BaseTrackedPipe):
         :return: Complete API endpoint URL
         :rtype: str
         """
-        base_url = f"https://{self.valves.AZURE_RESOURCE_NAME}.openai.azure.com"
+        # Remove trailing slash if present
+        base_url = self.valves.AZURE_ENDPOINT.rstrip('/')
         return (
             f"{base_url}/openai/deployments/{deployment_name}/chat/completions"
             f"?api-version={self.valves.API_VERSION}"
