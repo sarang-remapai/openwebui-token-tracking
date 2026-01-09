@@ -55,11 +55,18 @@ class AzureOpenAITrackedPipe(BaseTrackedPipe):
         )
 
     def _clean_value(self, value: str) -> str:
-        """Remove any non-ASCII characters from configuration values."""
+        """
+        Remove any non-ASCII characters and whitespace from configuration values.
+        """
         if not value:
             return ""
-        # Keep only printable ASCII characters (32-126)
-        return "".join(c for c in value if 32 <= ord(c) <= 126)
+        # Keep only printable ASCII characters (33-126), no spaces
+        # Or if spaces are needed (e.g. key?), valid URL chars don't include spaces.
+        # But let's safe strip() first.
+        
+        # Filter non-ascii
+        filtered = "".join(c for c in value if 32 <= ord(c) <= 126)
+        return filtered.strip()
 
     def _headers(self) -> dict:
         """
