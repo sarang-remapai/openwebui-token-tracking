@@ -54,6 +54,13 @@ class AzureOpenAITrackedPipe(BaseTrackedPipe):
             url="",
         )
 
+    def _clean_value(self, value: str) -> str:
+        """Remove any non-ASCII characters from configuration values."""
+        if not value:
+            return ""
+        # Keep only printable ASCII characters (32-126)
+        return "".join(c for c in value if 32 <= ord(c) <= 126)
+
     def _headers(self) -> dict:
         """
         Build headers for Azure OpenAI API requests.
@@ -63,8 +70,9 @@ class AzureOpenAITrackedPipe(BaseTrackedPipe):
         :return: Dictionary containing api-key and content-type headers
         :rtype: dict
         """
+        clean_key = self._clean_value(self.valves.API_KEY)
         return {
-            "api-key": self.valves.API_KEY,
+            "api-key": clean_key,
             "content-type": "application/json",
         }
 
@@ -97,11 +105,13 @@ class AzureOpenAITrackedPipe(BaseTrackedPipe):
         :return: Complete API endpoint URL
         :rtype: str
         """
-        # Remove trailing slash if present
-        base_url = self.valves.AZURE_ENDPOINT.rstrip('/')
+        # Remove trailing slash if present and clean hidden characters
+        base_url = self._clean_value(self.valves.AZURE_ENDPOINT).rstrip('/')
+        clean_version = self._clean_value(self.valves.API_VERSION)
+        
         return (
             f"{base_url}/openai/deployments/{deployment_name}/chat/completions"
-            f"?api-version={self.valves.API_VERSION}"
+            f"?api-version={clean_version}"
         )
 
     def _make_stream_request(
@@ -149,20 +159,36 @@ class AzureOpenAITrackedPipe(BaseTrackedPipe):
                             line = line.decode("utf-8")
                             if line.startswith("data: "):
                                 try:
-                                    data = json.loads(line[6:])
+                                    # Normalize the line (remove prefix and potential trailing newline)
+                                    json_str = line[6:].strip()
+                                    if json_str == "[DONE]":
+                                        break
+                                        
+                                    data = json.loads(json_str)
+                                    
+                                    # Track token usage
                                     if data.get("usage", None):
                                         tokens.prompt_tokens = data["usage"].get(
-                                            "prompt_tokens"
+                                            "prompt_tokens", 0
                                         )
                                         tokens.response_tokens = data["usage"].get(
-                                            "completion_tokens"
+                                            "completion_tokens", 0
                                         )
+
+                                    # Extract and yield content
+                                    choices = data.get("choices", [])
+                                    if choices:
+                                        delta = choices[0].get("delta", {})
+                                        content = delta.get("content")
+                                        if content:
+                                            yield content
+                                            
                                 except json.JSONDecodeError:
-                                    print(f"Failed to parse JSON: {line}")
-                                except KeyError as e:
-                                    print(f"Unexpected data structure: {e}")
-                                    print(f"Full data: {data}")
-                        yield line
+                                    if self.valves.DEBUG:
+                                        print(f"Failed to parse JSON: {line}")
+                                except Exception as e:
+                                    if self.valves.DEBUG:
+                                        print(f"Error processing chunk: {e}")
             except requests.exceptions.RequestException as e:
                 error_msg = str(e).encode('ascii', 'ignore').decode('ascii')
                 raise RequestError(f"Request failed: {error_msg}")
