@@ -113,11 +113,19 @@ class AzureOpenAITrackedPipe(BaseTrackedPipe):
         :rtype: str
         """
         # Remove trailing slash if present and clean hidden characters
-        base_url = self._clean_value(self.valves.AZURE_ENDPOINT).rstrip('/')
+        endpoint = self._clean_value(self.valves.AZURE_ENDPOINT).rstrip('/')
+
+        if not endpoint:
+            raise RequestError("Azure Endpoint is not configured. Please set AZURE_ENDPOINT in Valves or environment variables.")
+        
+        # Enforce https:// scheme if missing
+        if not endpoint.startswith("http"):
+            endpoint = f"https://{endpoint}"
+            
         clean_version = self._clean_value(self.valves.API_VERSION)
         
         return (
-            f"{base_url}/openai/deployments/{deployment_name}/chat/completions"
+            f"{endpoint}/openai/deployments/{deployment_name}/chat/completions"
             f"?api-version={clean_version}"
         )
 
